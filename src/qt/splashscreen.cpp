@@ -41,7 +41,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     QString copyrightText3  = QChar(0xA9)+QString(" 2013 ") + QString(tr("The Zetacoin Developers"));
     QString titleAddText    = networkStyle->getTitleAddText();
 
-    QString font            = "Arial";
+    QString font            = QApplication::font().toString();
 
     // load the bitmap for writing some text over it
     pixmap     = networkStyle->getSplashImage();
