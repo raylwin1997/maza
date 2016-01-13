@@ -1,15 +1,15 @@
 ---
-name: "mazzcoin-osx-0.10"
+name: "maza-osx-0.10"
 enable_cache: true
 suites:
 - "precise"
 architectures:
 - "amd64"
 packages: 
-- "g++-multilib"
+- "g++"
 - "git-core"
 - "pkg-config"
-- "autoconf2.13"
+- "autoconf"
 - "libtool"
 - "automake"
 - "faketime"
@@ -20,7 +20,7 @@ packages:
 - "libbz2-dev"
 reference_datetime: "2013-06-01 00:00:00"
 remotes:
-- "url": "https://github.com/maza/maza-new.git"
+- "url": "https://github.com/owlhooter/mazacoin-new.git"
   "dir": "maza"
 files:
 - "MacOSX10.9.sdk.tar.gz"
