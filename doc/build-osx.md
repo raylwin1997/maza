@@ -1,12 +1,11 @@
 Mac OS X Build Instructions and Notes
 ====================================
-This guide will show you how to build mazacoind(headless client) for OSX.
+This guide will show you how to build mazad(headless client) for OSX.
 
 Notes
 -----
 
-* Tested on OS X 10.6 through 10.9 on 64-bit Intel processors only.
-Older OSX releases or 32-bit processors are no longer supported.
+* Tested on OS X 10.7 through 10.10 on 64-bit Intel processors only.
 
 * All of the commands should be executed in a Terminal application. The
 built-in one is located in `/Applications/Utilities`.
@@ -50,7 +49,7 @@ Running this command takes you into brew's interactive mode, which allows you to
 $ brew install https://raw.github.com/mxcl/homebrew/master/Library/Formula/berkeley-db4.rb -–without-java 
 ```
 
-These rest of these commands are run inside brew interactive mode:
+The rest of these commands are run inside brew interactive mode:
 ```
 /private/tmp/berkeley-db4-UGpd0O/db-4.8.30 $ cd ..
 /private/tmp/berkeley-db4-UGpd0O $ db-4.8.30/dist/configure --prefix=/usr/local/Cellar/berkeley-db4/4.8.30 --mandir=/usr/local/Cellar/berkeley-db4/4.8.30/share/man --enable-cxx
@@ -59,19 +58,19 @@ These rest of these commands are run inside brew interactive mode:
 /private/tmp/berkeley-db4-UGpd0O $ exit
 ```
 
-After exiting, you'll get a warning that the install is keg-only, which means it wasn't symlinked to `/usr/local`.  You don't need it to link it to build mazacoin, but if you want to, here's how:
+After exiting, you'll get a warning that the install is keg-only, which means it wasn't symlinked to `/usr/local`.  You don't need it to link it to build maza, but if you want to, here's how:
 
-    $ brew --force link berkeley-db4
+    $ brew link --force berkeley-db4
 
 
-### Building `mazacoind`
+### Building `mazad`
 
 1. Clone the github tree to get the source code and go into the directory.
 
-        git clone https://github.com/mazacoin/mazacoin.git
-        cd mazacoin
+        git clone https://github.com/maza/maza.git
+        cd maza
 
-2.  Build mazacoind:
+2.  Build mazad:
 
         ./autogen.sh
         ./configure
@@ -81,45 +80,65 @@ After exiting, you'll get a warning that the install is keg-only, which means it
 
         make check
 
+4.  (Optional) You can also install bitcoind to your path:
+
+        make install
+
+Use Qt Creator as IDE
+------------------------
+You can use Qt Creator as IDE, for debugging and for manipulating forms, etc.
+Download Qt Creator from http://www.qt.io/download/. Download the "community edition" and only install Qt Creator (uncheck the rest during the installation process).
+
+1. Make sure you installed everything through homebrew mentioned above 
+2. Do a proper ./configure --with-gui=qt5 --enable-debug
+3. In Qt Creator do "New Project" -> Import Project -> Import Existing Project
+4. Enter "bitcoin-qt" as project name, enter src/qt as location
+5. Leave the file selection as it is
+6. Confirm the "summary page"
+7. In the "Projects" tab select "Manage Kits..."
+8. Select the default "Desktop" kit and select "Clang (x86 64bit in /usr/bin)" as compiler
+9. Select LLDB as debugger (you might need to set the path to your installtion)
+10. Start debugging with Qt Creator
+
 Creating a release build
 ------------------------
-You can ignore this section if you are building `mazacoind` for your own use.
+You can ignore this section if you are building `mazad` for your own use.
 
-mazacoind/mazacoin-cli binaries are not included in the Mazacoin-Qt.app bundle.
+mazad/maza-cli binaries are not included in the Maza-Qt.app bundle.
 
-If you are building `mazacoind` or `Mazacoin-Qt` for others, your build machine should be set up
+If you are building `mazad` or `Maza-Qt` for others, your build machine should be set up
 as follows for maximum compatibility:
 
 All dependencies should be compiled with these flags:
 
- -mmacosx-version-min=10.6
+ -mmacosx-version-min=10.7
  -arch x86_64
- -isysroot $(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk
+ -isysroot $(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk
 
-Once dependencies are compiled, see release-process.md for how the Mazacoin-Qt.app
+Once dependencies are compiled, see release-process.md for how the Maza-Qt.app
 bundle is packaged and signed to create the .dmg disk image that is distributed.
 
 Running
 -------
 
-It's now available at `./mazacoind`, provided that you are still in the `src`
+It's now available at `./mazad`, provided that you are still in the `src`
 directory. We have to first create the RPC configuration file, though.
 
-Run `./mazacoind` to get the filename where it should be put, or just try these
+Run `./mazad` to get the filename where it should be put, or just try these
 commands:
 
-    echo -e "rpcuser=mazacoinrpc\nrpcpassword=$(xxd -l 16 -p /dev/urandom)" > "/Users/${USER}/Library/Application Support/Mazacoin/mazacoin.conf"
-    chmod 600 "/Users/${USER}/Library/Application Support/Mazacoin/mazacoin.conf"
+    echo -e "rpcuser=mazarpc\nrpcpassword=$(xxd -l 16 -p /dev/urandom)" > "/Users/${USER}/Library/Application Support/Maza/maza.conf"
+    chmod 600 "/Users/${USER}/Library/Application Support/Maza/maza.conf"
 
 The next time you run it, it will start downloading the blockchain, but it won't
 output anything while it's doing this. This process may take several hours;
 you can monitor its process by looking at the debug.log file, like this:
 
-    tail -f $HOME/Library/Application\ Support/Mazacoin/debug.log
+    tail -f $HOME/Library/Application\ Support/Maza/debug.log
 
 Other commands:
 -------
 
-    ./mazacoind -daemon # to start the mazacoin daemon.
-    ./mazacoin-cli --help  # for a list of command-line options.
-    ./mazacoin-cli help    # When the daemon is running, to get a list of RPC commands
+    ./mazad -daemon # to start the maza daemon.
+    ./maza-cli --help  # for a list of command-line options.
+    ./maza-cli help    # When the daemon is running, to get a list of RPC commands

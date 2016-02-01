@@ -1,20 +1,18 @@
-This is non-production code!! https://github.com/MazaCoin/MazaCoin is where to find production code. 
-This version of mazacoin will replace the current repo when completed. We are reorganizing this code so that it:
+This is non-production code!! https://github.com/Maza/Maza is where to find production code. 
+This version of maza will replace the current repo when completed. We are reorganizing this code so that it:
 1) is directly forked from it's bitcoin source
 2) produces proper gitian-builds
-3) moves all significant deviations from bitcoin out of the main code so differences betwee MZC and BTC are clear
+3) moves all significant deviations from bitcoin out of the main code so differences betwee MAZA and BTC are clear
 4) provides a proper testnet environment
 
 
 
-Mazacoin Core integration/staging tree
+Maza Core integration/staging tree
 =====================================
 
 [![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
 
 https://www.bitcoin.org
-
-Copyright (c) 2009-2014 Bitcoin Core Developers
 
 What is Bitcoin?
 ----------------
@@ -121,7 +119,7 @@ are testing multi-machine code that needs to operate across the internet.
 
 If you are testing something that can run on one machine, run with the -regtest option.
 In regression test mode, blocks can be created on-demand; see qa/rpc-tests/ for tests
-that run in -regest mode.
+that run in -regtest mode.
 
 **DEBUG_LOCKORDER**
 

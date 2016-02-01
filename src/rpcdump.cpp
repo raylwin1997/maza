@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
+// Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "base58.h"
@@ -73,10 +73,10 @@ Value importprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
-            "importprivkey \"mazacoinprivkey\" ( \"label\" rescan )\n"
+            "importprivkey \"mazaprivkey\" ( \"label\" rescan )\n"
             "\nAdds a private key (as returned by dumpprivkey) to your wallet.\n"
             "\nArguments:\n"
-            "1. \"mazacoinprivkey\"   (string, required) The private key (see dumpprivkey)\n"
+            "1. \"mazaprivkey\"   (string, required) The private key (see dumpprivkey)\n"
             "2. \"label\"            (string, optional, default=\"\") An optional label\n"
             "3. rescan               (boolean, optional, default=true) Rescan the wallet for transactions\n"
             "\nNote: This call can take minutes to complete if rescan is true.\n"
@@ -112,10 +112,9 @@ Value importprivkey(const Array& params, bool fHelp)
     if (!key.IsValid()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
 
     CPubKey pubkey = key.GetPubKey();
+    assert(key.VerifyPubKey(pubkey));
     CKeyID vchAddress = pubkey.GetID();
     {
-        LOCK2(cs_main, pwalletMain->cs_wallet);
-
         pwalletMain->MarkDirty();
         pwalletMain->SetAddressBook(vchAddress, strLabel, "receive");
 
@@ -168,7 +167,7 @@ Value importaddress(const Array& params, bool fHelp)
         std::vector<unsigned char> data(ParseHex(params[0].get_str()));
         script = CScript(data.begin(), data.end());
     } else {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Mazacoin address or script");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Maza address or script");
     }
 
     string strLabel = "";
@@ -181,7 +180,8 @@ Value importaddress(const Array& params, bool fHelp)
         fRescan = params[2].get_bool();
 
     {
-        LOCK2(cs_main, pwalletMain->cs_wallet);
+        if (::IsMine(*pwalletMain, script) == ISMINE_SPENDABLE)
+            throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
 
         // add to address book or update label
         if (address.IsValid())
@@ -254,6 +254,7 @@ Value importwallet(const Array& params, bool fHelp)
             continue;
         CKey key = vchSecret.GetKey();
         CPubKey pubkey = key.GetPubKey();
+        assert(key.VerifyPubKey(pubkey));
         CKeyID keyid = pubkey.GetID();
         if (pwalletMain->HaveKey(keyid)) {
             LogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
@@ -308,11 +309,11 @@ Value dumpprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "dumpprivkey \"mazacoinaddress\"\n"
-            "\nReveals the private key corresponding to 'mazacoinaddress'.\n"
+            "dumpprivkey \"mazaaddress\"\n"
+            "\nReveals the private key corresponding to 'mazaaddress'.\n"
             "Then the importprivkey can be used with this output\n"
             "\nArguments:\n"
-            "1. \"mazacoinaddress\"   (string, required) The mazacoin address for the private key\n"
+            "1. \"mazaaddress\"   (string, required) The maza address for the private key\n"
             "\nResult:\n"
             "\"key\"                (string) The private key\n"
             "\nExamples:\n"
@@ -326,7 +327,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Mazacoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Maza address");
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
@@ -371,7 +372,7 @@ Value dumpwallet(const Array& params, bool fHelp)
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     // produce output
-    file << strprintf("# Wallet dump created by Mazacoin %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
+    file << strprintf("# Wallet dump created by Maza %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
     file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHash().ToString());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(chainActive.Tip()->GetBlockTime()));

@@ -9,7 +9,7 @@
 #include "qvalidatedlineedit.h"
 #include "walletmodel.h"
 
-#include "core.h"
+#include "primitives/transaction.h"
 #include "init.h"
 #include "main.h"
 #include "protocol.h"
@@ -67,6 +67,9 @@ static boost::filesystem::detail::utf8_codecvt_facet utf8;
 
 #if defined(Q_OS_MAC)
 extern double NSAppKitVersionNumber;
+#if !defined(NSAppKitVersionNumber10_8)
+#define NSAppKitVersionNumber10_8 1187
+#endif
 #if !defined(NSAppKitVersionNumber10_9)
 #define NSAppKitVersionNumber10_9 1265
 #endif
@@ -103,7 +106,7 @@ void setupAddressWidget(QValidatedLineEdit *widget, QWidget *parent)
 #if QT_VERSION >= 0x040700
     // We don't want translators to use own addresses in translations
     // and this is the only place, where this address is supplied.
-    widget->setPlaceholderText(QObject::tr("Enter a Mazacoin address (e.g. %1)").arg("MLgiAgLZp7C4eJEscF6mUUJ33W8aFa94wr"));
+    widget->setPlaceholderText(QObject::tr("Enter a Maza address (e.g. %1)").arg("MLgiAgLZp7C4eJEscF6mUUJ33W8aFa94wr"));
 #endif
     widget->setValidator(new BitcoinAddressEntryValidator(parent));
     widget->setCheckValidator(new BitcoinAddressCheckValidator(parent));
@@ -120,8 +123,8 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
 
 bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 {
-    // return if URI is not valid or is no mazacoin: URI
-    if(!uri.isValid() || uri.scheme() != QString("mazacoin"))
+    // return if URI is not valid or is no maza: URI
+    if(!uri.isValid() || uri.scheme() != QString("maza"))
         return false;
 
     SendCoinsRecipient rv;
@@ -181,13 +184,13 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 
 bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 {
-    // Convert mazacoin:// to mazacoin:
+    // Convert maza:// to maza:
     //
-    //    Cannot handle this later, because mazacoin:// will cause Qt to see the part after // as host,
+    //    Cannot handle this later, because maza:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
-    if(uri.startsWith("mazacoin://", Qt::CaseInsensitive))
+    if(uri.startsWith("maza://", Qt::CaseInsensitive))
     {
-        uri.replace(0, 11, "mazacoin:");
+        uri.replace(0, 11, "maza:");
     }
     QUrl uriInstance(uri);
     return parseBitcoinURI(uriInstance, out);
@@ -195,7 +198,7 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 
 QString formatBitcoinURI(const SendCoinsRecipient &info)
 {
-    QString ret = QString("mazacoin:%1").arg(info.address);
+    QString ret = QString("maza:%1").arg(info.address);
     int paramCount = 0;
 
     if (info.amount)
@@ -221,7 +224,7 @@ QString formatBitcoinURI(const SendCoinsRecipient &info)
     return ret;
 }
 
-bool isDust(const QString& address, qint64 amount)
+bool isDust(const QString& address, const CAmount& amount)
 {
     CTxDestination dest = CBitcoinAddress(address.toStdString()).Get();
     CScript script = GetScriptForDestination(dest);
@@ -383,7 +386,7 @@ void openDebugLogfile()
         QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathDebug)));
 }
 
-void SubstituteFonts()
+void SubstituteFonts(const QString& language)
 {
 #if defined(Q_OS_MAC)
 // Background:
@@ -393,12 +396,28 @@ void SubstituteFonts()
 // If this fallback is not properly loaded, some characters may fail to
 // render correctly.
 //
+// The same thing happened with 10.10. .Helvetica Neue DeskInterface is now default.
+//
 // Solution: If building with the 10.7 SDK or lower and the user's platform
 // is 10.9 or higher at runtime, substitute the correct font. This needs to
 // happen before the QApplication is created.
 #if defined(MAC_OS_X_VERSION_MAX_ALLOWED) && MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_8
-    if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_9)
-        QFont::insertSubstitution(".Lucida Grande UI", "Lucida Grande");
+    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_8)
+    {
+        if (floor(NSAppKitVersionNumber) <= NSAppKitVersionNumber10_9)
+            /* On a 10.9 - 10.9.x system */
+            QFont::insertSubstitution(".Lucida Grande UI", "Lucida Grande");
+        else
+        {
+            /* 10.10 or later system */
+            if (language == "zh_CN" || language == "zh_TW" || language == "zh_HK") // traditional or simplified Chinese
+              QFont::insertSubstitution(".Helvetica Neue DeskInterface", "Heiti SC");
+            else if (language == "ja") // Japanesee
+              QFont::insertSubstitution(".Helvetica Neue DeskInterface", "Songti SC");
+            else
+              QFont::insertSubstitution(".Helvetica Neue DeskInterface", "Lucida Grande");
+        }
+    }
 #endif
 #endif
 }
@@ -548,12 +567,12 @@ TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* t
 #ifdef WIN32
 boost::filesystem::path static StartupShortcutPath()
 {
-    return GetSpecialFolderPath(CSIDL_STARTUP) / "Mazacoin.lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / "Maza.lnk";
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for Mazacoin.lnk
+    // check for Maza.lnk
     return boost::filesystem::exists(StartupShortcutPath());
 }
 
@@ -630,7 +649,7 @@ boost::filesystem::path static GetAutostartDir()
 
 boost::filesystem::path static GetAutostartFilePath()
 {
-    return GetAutostartDir() / "mazacoin.desktop";
+    return GetAutostartDir() / "maza.desktop";
 }
 
 bool GetStartOnSystemStartup()
@@ -668,10 +687,10 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         boost::filesystem::ofstream optionFile(GetAutostartFilePath(), std::ios_base::out|std::ios_base::trunc);
         if (!optionFile.good())
             return false;
-        // Write a mazacoin.desktop file to the autostart directory:
+        // Write a maza.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
-        optionFile << "Name=Mazacoin\n";
+        optionFile << "Name=Maza\n";
         optionFile << "Exec=" << pszExePath << " -min\n";
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";
@@ -690,7 +709,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl);
 LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl)
 {
-    // loop through the list of startup items and try to find the mazacoin app
+    // loop through the list of startup items and try to find the maza app
     CFArrayRef listSnapshot = LSSharedFileListCopySnapshot(list, NULL);
     for(int i = 0; i < CFArrayGetCount(listSnapshot); i++) {
         LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
@@ -724,7 +743,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
     LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, bitcoinAppUrl);
 
     if(fAutoStart && !foundItem) {
-        // add mazacoin app to startup item list
+        // add maza app to startup item list
         LSSharedFileListInsertItemURL(loginItems, kLSSharedFileListItemBeforeFirst, NULL, NULL, bitcoinAppUrl, NULL, NULL);
     }
     else if(!fAutoStart && foundItem) {

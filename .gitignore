@@ -1,12 +1,12 @@
 *.tar.gz
 
 *.exe
-src/mazacoin
-src/mazacoind
-src/mazacoin-cli
-src/mazacoin-tx
-src/test/test_mazacoin
-src/qt/test/test_mazacoin-qt
+src/maza
+src/mazad
+src/maza-cli
+src/maza-tx
+src/test/test_maza
+src/qt/test/test_maza-qt
 
 # autoreconf
 Makefile.in
@@ -45,6 +45,7 @@ src/qt/test/moc*.cpp
 
 .deps
 .dirstamp
+.libs
 .*.swp
 *.*~*
 *.bak
@@ -54,7 +55,7 @@ src/qt/test/moc*.cpp
 *.o
 *.o-*
 *.patch
-.mazacoin
+.maza
 *.a
 *.pb.cc
 *.pb.h
@@ -66,15 +67,20 @@ src/qt/test/moc*.cpp
 *.json.h
 *.raw.h
 
+#libtool object files
+*.lo
+*.la
+
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
-mazacoin-qt
+maza-qt
 Bitcoin-Qt.app
 
 # Unit-tests
 Makefile.test
-mazacoin-qt_test
+maza-qt_test
+src/test/buildenv.py
 
 # Resources cpp
 qrc_*.cpp
@@ -89,7 +95,7 @@ build
 #lcov
 *.gcno
 /*.info
-test_mazacoin.coverage/
+test_maza.coverage/
 total.coverage/
 coverage_percent.txt
 
@@ -97,7 +103,11 @@ coverage_percent.txt
 linux-coverage-build
 linux-build
 win32-build
-qa/pull-tester/run-mazacoind-for-test.sh
-qa/pull-tester/build-tests.sh
+qa/pull-tester/run-mazad-for-test.sh
+qa/pull-tester/tests-config.sh
+qa/pull-tester/cache/*
+qa/pull-tester/test.*/*
 
 !src/leveldb*/Makefile
+
+/doc/doxygen/

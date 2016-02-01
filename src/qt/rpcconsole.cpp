@@ -361,7 +361,7 @@ void RPCConsole::clear()
                 "b { color: #006060; } "
                 );
 
-    message(CMD_REPLY, (tr("Welcome to the Mazacoin RPC console.") + "<br>" +
+    message(CMD_REPLY, (tr("Welcome to the Maza RPC console.") + "<br>" +
                         tr("Use up and down arrows to navigate history, and <b>Ctrl-L</b> to clear screen.") + "<br>" +
                         tr("Type <b>help</b> for an overview of available commands.")), true);
 }
@@ -611,7 +611,6 @@ void RPCConsole::updateNodeDetail(const CNodeCombinedStats *stats)
     ui->peerSubversion->setText(QString::fromStdString(stats->nodeStats.cleanSubVer));
     ui->peerDirection->setText(stats->nodeStats.fInbound ? tr("Inbound") : tr("Outbound"));
     ui->peerHeight->setText(QString("%1").arg(stats->nodeStats.nStartingHeight));
-    ui->peerSyncNode->setText(stats->nodeStats.fSyncNode ? tr("Yes") : tr("No"));
 
     // This check fails for example if the lock was busy and
     // nodeStateStats couldn't be fetched.

@@ -3,6 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "clientversion.h"
 #include "rpcserver.h"
 #include "init.h"
 #include "main.h"
@@ -58,13 +59,36 @@ bool AppInit(int argc, char* argv[])
     boost::thread* detectShutdownThread = NULL;
 
     bool fRet = false;
+
+    //
+    // Parameters
+    //
+    // If Qt is used, parameters/bitcoin.conf are parsed in qt/bitcoin.cpp's main()
+    ParseParameters(argc, argv);
+
+    // Process help and version before taking care about datadir
+    if (mapArgs.count("-?") || mapArgs.count("-help") || mapArgs.count("-version"))
+    {
+        std::string strUsage = _("Maza Core Daemon") + " " + _("version") + " " + FormatFullVersion() + "\n";
+
+        if (mapArgs.count("-version"))
+        {
+            strUsage += LicenseInfo();
+        }
+        else
+        {
+            strUsage += "\n" + _("Usage:") + "\n" +
+                  "  mazad [options]                     " + _("Start Maza Core Daemon") + "\n";
+
+            strUsage += "\n" + HelpMessage(HMM_BITCOIND);
+        }
+
+        fprintf(stdout, "%s", strUsage.c_str());
+        return false;
+    }
+
     try
     {
-        //
-        // Parameters
-        //
-        // If Qt is used, parameters/bitcoin.conf are parsed in qt/bitcoin.cpp's main()
-        ParseParameters(argc, argv);
         if (!boost::filesystem::is_directory(GetDataDir(false)))
         {
             fprintf(stderr, "Error: Specified data directory \"%s\" does not exist.\n", mapArgs["-datadir"].c_str());
@@ -83,42 +107,22 @@ bool AppInit(int argc, char* argv[])
             return false;
         }
 
-        if (mapArgs.count("-?") || mapArgs.count("-help") || mapArgs.count("-version"))
-        {
-            std::string strUsage = _("Mazacoin Core Daemon") + " " + _("version") + " " + FormatFullVersion() + "\n";
-
-            if (mapArgs.count("-version"))
-            {
-                strUsage += LicenseInfo();
-            }
-            else
-            {
-                strUsage += "\n" + _("Usage:") + "\n" +
-                      "  mazacoind [options]                     " + _("Start Mazacoin Core Daemon") + "\n";
-
-                strUsage += "\n" + HelpMessage(HMM_BITCOIND);
-            }
-
-            fprintf(stdout, "%s", strUsage.c_str());
-            return false;
-        }
-
         // Command-line RPC
         bool fCommandLine = false;
         for (int i = 1; i < argc; i++)
-            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "mazacoin:"))
+            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "maza:"))
                 fCommandLine = true;
 
         if (fCommandLine)
         {
-            fprintf(stderr, "Error: There is no RPC client functionality in mazacoind anymore. Use the mazacoin-cli utility instead.\n");
+            fprintf(stderr, "Error: There is no RPC client functionality in mazad anymore. Use the maza-cli utility instead.\n");
             exit(1);
         }
 #ifndef WIN32
         fDaemon = GetBoolArg("-daemon", false);
         if (fDaemon)
         {
-            fprintf(stdout, "Mazacoin server starting\n");
+            fprintf(stdout, "Maza server starting\n");
 
             // Daemonize
             pid_t pid = fork();

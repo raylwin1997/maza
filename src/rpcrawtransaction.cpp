@@ -1,10 +1,10 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
+// Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "base58.h"
-#include "core.h"
+#include "primitives/transaction.h"
 #include "core_io.h"
 #include "init.h"
 #include "keystore.h"
@@ -110,6 +110,9 @@ Value getrawtransaction(const Array& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getrawtransaction \"txid\" ( verbose )\n"
+            "\nNOTE: By default this function only works sometimes. This is when the tx is in the mempool\n"
+            "or there is an unspent output in the utxo for this transaction. To make it always work,\n"
+            "you need to maintain a transaction index, using the -txindex command line option.\n"
             "\nReturn the raw transaction data.\n"
             "\nIf verbose=0, returns a string that is serialized, hex-encoded data for 'txid'.\n"
             "If verbose is non-zero, returns an Object with information about 'txid'.\n"
@@ -149,7 +152,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
             "         \"reqSigs\" : n,            (numeric) The required sigs\n"
             "         \"type\" : \"pubkeyhash\",  (string) The type, eg 'pubkeyhash'\n"
             "         \"addresses\" : [           (json array of string)\n"
-            "           \"mazacoinaddress\"        (string) mazacoin address\n"
+            "           \"mazaaddress\"        (string) maza address\n"
             "           ,...\n"
             "         ]\n"
             "       }\n"
@@ -202,11 +205,11 @@ Value listunspent(const Array& params, bool fHelp)
             "Results are an array of Objects, each of which has:\n"
             "{txid, vout, scriptPubKey, amount, confirmations}\n"
             "\nArguments:\n"
-            "1. minconf          (numeric, optional, default=1) The minimum confirmationsi to filter\n"
+            "1. minconf          (numeric, optional, default=1) The minimum confirmations to filter\n"
             "2. maxconf          (numeric, optional, default=9999999) The maximum confirmations to filter\n"
-            "3. \"addresses\"    (string) A json array of mazacoin addresses to filter\n"
+            "3. \"addresses\"    (string) A json array of maza addresses to filter\n"
             "    [\n"
-            "      \"address\"   (string) mazacoin address\n"
+            "      \"address\"   (string) maza address\n"
             "      ,...\n"
             "    ]\n"
             "\nResult\n"
@@ -214,7 +217,7 @@ Value listunspent(const Array& params, bool fHelp)
             "  {\n"
             "    \"txid\" : \"txid\",        (string) the transaction id \n"
             "    \"vout\" : n,               (numeric) the vout value\n"
-            "    \"address\" : \"address\",  (string) the mazacoin address\n"
+            "    \"address\" : \"address\",  (string) the maza address\n"
             "    \"account\" : \"account\",  (string) The associated account, or \"\" for the default account\n"
             "    \"scriptPubKey\" : \"key\", (string) the script key\n"
             "    \"amount\" : x.xxx,         (numeric) the transaction amount in mzc\n"
@@ -245,7 +248,7 @@ Value listunspent(const Array& params, bool fHelp)
         BOOST_FOREACH(Value& input, inputs) {
             CBitcoinAddress address(input.get_str());
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Mazacoin address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Maza address: ")+input.get_str());
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+input.get_str());
            setAddress.insert(address);
@@ -269,7 +272,7 @@ Value listunspent(const Array& params, bool fHelp)
                 continue;
         }
 
-        int64_t nValue = out.tx->vout[out.i].nValue;
+        CAmount nValue = out.tx->vout[out.i].nValue;
         const CScript& pk = out.tx->vout[out.i].scriptPubKey;
         Object entry;
         entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
@@ -284,7 +287,7 @@ Value listunspent(const Array& params, bool fHelp)
         if (pk.IsPayToScriptHash()) {
             CTxDestination address;
             if (ExtractDestination(pk, address)) {
-                const CScriptID& hash = boost::get<const CScriptID&>(address);
+                const CScriptID& hash = boost::get<CScriptID>(address);
                 CScript redeemScript;
                 if (pwalletMain->GetCScript(hash, redeemScript))
                     entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
@@ -321,7 +324,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
             "     ]\n"
             "2. \"addresses\"           (string, required) a json object with addresses as keys and amounts as values\n"
             "    {\n"
-            "      \"address\": x.xxx   (numeric, required) The key is the mazacoin address, the value is the mzc amount\n"
+            "      \"address\": x.xxx   (numeric, required) The key is the maza address, the value is the mzc amount\n"
             "      ,...\n"
             "    }\n"
 
@@ -360,14 +363,14 @@ Value createrawtransaction(const Array& params, bool fHelp)
     BOOST_FOREACH(const Pair& s, sendTo) {
         CBitcoinAddress address(s.name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Mazacoin address: ")+s.name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Maza address: ")+s.name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+s.name_);
         setAddress.insert(address);
 
         CScript scriptPubKey = GetScriptForDestination(address.Get());
-        int64_t nAmount = AmountFromValue(s.value_);
+        CAmount nAmount = AmountFromValue(s.value_);
 
         CTxOut out(nAmount, scriptPubKey);
         rawTx.vout.push_back(out);
@@ -413,7 +416,7 @@ Value decoderawtransaction(const Array& params, bool fHelp)
             "         \"reqSigs\" : n,            (numeric) The required sigs\n"
             "         \"type\" : \"pubkeyhash\",  (string) The type, eg 'pubkeyhash'\n"
             "         \"addresses\" : [           (json array of string)\n"
-            "           \"MLgiAgLZp7C4eJEscF6mUUJ33W8aFa94wr\"   (string) mazacoin address\n"
+            "           \"MLgiAgLZp7C4eJEscF6mUUJ33W8aFa94wr\"   (string) maza address\n"
             "           ,...\n"
             "         ]\n"
             "       }\n"
@@ -455,7 +458,7 @@ Value decodescript(const Array& params, bool fHelp)
             "  \"type\":\"type\", (string) The output type\n"
             "  \"reqSigs\": n,    (numeric) The required signatures\n"
             "  \"addresses\": [   (json array of string)\n"
-            "     \"address\"     (string) mazacoin address\n"
+            "     \"address\"     (string) maza address\n"
             "     ,...\n"
             "  ],\n"
             "  \"p2sh\",\"address\" (string) script address\n"
@@ -477,7 +480,7 @@ Value decodescript(const Array& params, bool fHelp)
     }
     ScriptPubKeyToJSON(script, r, false);
 
-    r.push_back(Pair("p2sh", CBitcoinAddress(script.GetID()).ToString()));
+    r.push_back(Pair("p2sh", CBitcoinAddress(CScriptID(script)).ToString()));
     return r;
 }
 
@@ -557,11 +560,11 @@ Value signrawtransaction(const Array& params, bool fHelp)
 
     // Fetch previous transactions (inputs):
     CCoinsView viewDummy;
-    CCoinsViewCache view(viewDummy);
+    CCoinsViewCache view(&viewDummy);
     {
         LOCK(mempool.cs);
         CCoinsViewCache &viewChain = *pcoinsTip;
-        CCoinsViewMemPool viewMempool(viewChain, mempool);
+        CCoinsViewMemPool viewMempool(&viewChain, mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
         BOOST_FOREACH(const CTxIn& txin, mergedTx.vin) {
@@ -584,6 +587,8 @@ Value signrawtransaction(const Array& params, bool fHelp)
             if (!fGood)
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
             CKey key = vchSecret.GetKey();
+            if (!key.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
             tempKeystore.AddKey(key);
         }
     }
@@ -612,21 +617,19 @@ Value signrawtransaction(const Array& params, bool fHelp)
             vector<unsigned char> pkData(ParseHexO(prevOut, "scriptPubKey"));
             CScript scriptPubKey(pkData.begin(), pkData.end());
 
-            CCoins coins;
-            if (view.GetCoins(txid, coins)) {
-                if (coins.IsAvailable(nOut) && coins.vout[nOut].scriptPubKey != scriptPubKey) {
+            {
+                CCoinsModifier coins = view.ModifyCoins(txid);
+                if (coins->IsAvailable(nOut) && coins->vout[nOut].scriptPubKey != scriptPubKey) {
                     string err("Previous output scriptPubKey mismatch:\n");
-                    err = err + coins.vout[nOut].scriptPubKey.ToString() + "\nvs:\n"+
+                    err = err + coins->vout[nOut].scriptPubKey.ToString() + "\nvs:\n"+
                         scriptPubKey.ToString();
                     throw JSONRPCError(RPC_DESERIALIZATION_ERROR, err);
                 }
-                // what todo if txid is known, but the actual output isn't?
+                if ((unsigned int)nOut >= coins->vout.size())
+                    coins->vout.resize(nOut+1);
+                coins->vout[nOut].scriptPubKey = scriptPubKey;
+                coins->vout[nOut].nValue = 0; // we don't know the actual output value
             }
-            if ((unsigned int)nOut >= coins.vout.size())
-                coins.vout.resize(nOut+1);
-            coins.vout[nOut].scriptPubKey = scriptPubKey;
-            coins.vout[nOut].nValue = 0; // we don't know the actual output value
-            view.SetCoins(txid, coins);
 
             // if redeemScript given and not using the local wallet (private keys
             // given), add redeemScript to the tempKeystore so it can be signed:
@@ -687,7 +690,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
         BOOST_FOREACH(const CMutableTransaction& txv, txVariants) {
             txin.scriptSig = CombineSignatures(prevPubKey, mergedTx, i, txin.scriptSig, txv.vin[i].scriptSig);
         }
-        if (!VerifyScript(txin.scriptSig, prevPubKey, mergedTx, i, STANDARD_SCRIPT_VERIFY_FLAGS))
+        if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, MutableTransactionSignatureChecker(&mergedTx, i)))
             fComplete = false;
     }
 

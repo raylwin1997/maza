@@ -4,13 +4,13 @@ SUBDIRS = src
 
 GZIP_ENV="-9n"
 
-BITCOIND_BIN=$(top_builddir)/src/mazacoind$(EXEEXT)
-BITCOIN_QT_BIN=$(top_builddir)/src/qt/mazacoin-qt$(EXEEXT)
-BITCOIN_CLI_BIN=$(top_builddir)/src/mazacoin-cli$(EXEEXT)
+BITCOIND_BIN=$(top_builddir)/src/mazad$(EXEEXT)
+BITCOIN_QT_BIN=$(top_builddir)/src/qt/maza-qt$(EXEEXT)
+BITCOIN_CLI_BIN=$(top_builddir)/src/maza-cli$(EXEEXT)
 BITCOIN_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win$(WINDOWS_BITS)-setup$(EXEEXT)
 
-OSX_APP=Mazacoin-Qt.app
-OSX_DMG=Mazacoin-Qt.dmg
+OSX_APP=Maza-Qt.app
+OSX_DMG=Maza-Qt.dmg
 OSX_DEPLOY_SCRIPT=$(top_srcdir)/contrib/macdeploy/macdeployqtplus
 OSX_FANCY_PLIST=$(top_srcdir)/contrib/macdeploy/fancy.plist
 OSX_INSTALLER_ICONS=$(top_srcdir)/src/qt/res/icons/bitcoin.icns
@@ -26,7 +26,9 @@ WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/bitcoin.ico \
 
 OSX_PACKAGING = $(OSX_DEPLOY_SCRIPT) $(OSX_FANCY_PLIST) $(OSX_INSTALLER_ICONS) \
   $(top_srcdir)/contrib/macdeploy/background.png \
-  $(top_srcdir)/contrib/macdeploy/DS_Store
+  $(top_srcdir)/contrib/macdeploy/DS_Store \
+  $(top_srcdir)/contrib/macdeploy/detached-sig-apply.sh \
+  $(top_srcdir)/contrib/macdeploy/detached-sig-create.sh
 
 COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
   leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
@@ -36,7 +38,7 @@ COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
 dist-hook:
 	-$(MAKE) -C $(top_distdir)/src/leveldb clean
 	-$(MAKE) -C $(top_distdir)/src/secp256k1 distclean
-	-$(GIT) archive --format=tar HEAD -- src/version.cpp | $(AMTAR) -C $(top_distdir) -xf -
+	-$(GIT) archive --format=tar HEAD -- src/clientversion.cpp | $(AMTAR) -C $(top_distdir) -xf -
 
 distcheck-hook:
 	$(MKDIR_P) $(top_distdir)/_build/src/leveldb
@@ -73,26 +75,42 @@ $(OSX_APP)/Contents/Resources/bitcoin.icns: $(OSX_INSTALLER_ICONS)
 	$(MKDIR_P) $(@D)
 	$(INSTALL_DATA) $< $@
 
-$(OSX_APP)/Contents/MacOS/Mazacoin-Qt: $(BITCOIN_QT_BIN)
+$(OSX_APP)/Contents/MacOS/Maza-Qt: $(BITCOIN_QT_BIN)
 	$(MKDIR_P) $(@D)
 	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM)  $< $@
 
 OSX_APP_BUILT=$(OSX_APP)/Contents/PkgInfo $(OSX_APP)/Contents/Resources/empty.lproj \
   $(OSX_APP)/Contents/Resources/bitcoin.icns $(OSX_APP)/Contents/Info.plist \
-  $(OSX_APP)/Contents/MacOS/Mazacoin-Qt
+  $(OSX_APP)/Contents/MacOS/Maza-Qt
 
 if BUILD_DARWIN
 $(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
 	$(OSX_DEPLOY_SCRIPT) $(OSX_APP) -add-qt-tr $(OSX_QT_TRANSLATIONS) -translations-dir=$(QT_TRANSLATION_DIR) -dmg -fancy $(OSX_FANCY_PLIST) -verbose 2
 
+deploydir: $(OSX_DMG)
 else
-$(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
-	INSTALLNAMETOOL=$(INSTALLNAMETOOL)  OTOOL=$(OTOOL) STRIP=$(STRIP) $(OSX_DEPLOY_SCRIPT) $(OSX_APP) -add-qt-tr $(OSX_QT_TRANSLATIONS) -translations-dir=$(QT_TRANSLATION_DIR) -verbose 2
-	$(MKDIR_P) dist/.background
-	$(INSTALL) contrib/macdeploy/background.png dist/.background
-	$(INSTALL) contrib/macdeploy/DS_Store dist/.DS_Store
-	cd dist; $(LN_S) /Applications Applications
-	$(GENISOIMAGE) -no-cache-inodes -l -probe -V "Mazacoin-Qt" -no-pad -r -apple -o $@ dist
+APP_DIST_DIR=$(top_builddir)/dist
+APP_DIST_EXTRAS=$(APP_DIST_DIR)/.background/background.png $(APP_DIST_DIR)/.DS_Store $(APP_DIST_DIR)/Applications
+
+$(APP_DIST_DIR)/Applications:
+	@rm -f $@
+	@cd $(@D); $(LN_S) /Applications $(@F)
+
+$(APP_DIST_EXTRAS): $(APP_DIST_DIR)/$(OSX_APP)/Contents/MacOS/Maza-Qt
+
+$(OSX_DMG): $(APP_DIST_EXTRAS)
+	$(GENISOIMAGE) -no-cache-inodes -D -l -probe -V "Maza-Qt" -no-pad -r -apple -o $@ dist
+
+$(APP_DIST_DIR)/.background/background.png:
+	$(MKDIR_P) $(@D)
+	$(INSTALL) $(top_srcdir)/contrib/macdeploy/background.png $@
+$(APP_DIST_DIR)/.DS_Store:
+	$(INSTALL) $(top_srcdir)/contrib/macdeploy/DS_Store $@
+
+$(APP_DIST_DIR)/$(OSX_APP)/Contents/MacOS/Maza-Qt: $(OSX_APP_BUILT) $(OSX_PACKAGING)
+	INSTALLNAMETOOL=$(INSTALLNAMETOOL)  OTOOL=$(OTOOL) STRIP=$(STRIP) $(OSX_DEPLOY_SCRIPT) $(OSX_APP) -translations-dir=$(QT_TRANSLATION_DIR) -add-qt-tr $(OSX_QT_TRANSLATIONS) -verbose 2
+
+deploydir: $(APP_DIST_EXTRAS)
 endif
 
 if TARGET_DARWIN
@@ -172,7 +190,7 @@ check-local:
 	@qa/pull-tester/run-bitcoind-for-test.sh $(JAVA) -jar $(JAVA_COMPARISON_TOOL) qa/tmp/compTool $(COMPARISON_TOOL_REORG_TESTS) 2>&1
 endif
 
-EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/pull-tester.sh qa/rpc-tests $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
+EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull-tester/run-bitcoin-cli qa/rpc-tests $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
 
 CLEANFILES = $(OSX_DMG) $(BITCOIN_WIN_INSTALLER)
 
