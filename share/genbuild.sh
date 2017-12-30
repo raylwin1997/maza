@@ -5,7 +5,7 @@ fi
 if [ $# -gt 0 ]; then
     FILE="$1"
     shift
-    if [ -f "$FILE" ]; then
+    if [ -f "$FILE" ]; 
         INFO="$(head -n 1 "$FILE")"
     fi
 else
